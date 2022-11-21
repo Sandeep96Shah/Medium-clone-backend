@@ -5,6 +5,7 @@ const PostedBlog = require("../model/UserPostedBlogs");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 // agent to interact with aws s3 bucket
 const {
@@ -48,14 +49,14 @@ module.exports.CreateUser = async (req, res) => {
       Key: originalname,
       Body: buffer,
       ContentType: mimetype,
-    }
+    };
 
     const putCommand = new PutObjectCommand(putParams);
     await s3.send(putCommand);
     const getParams = {
       Bucket: bucketName,
       Key: originalname,
-    }
+    };
 
     const getCommand = new GetObjectCommand(getParams);
     const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
@@ -117,6 +118,13 @@ module.exports.SignIn = async (req, res) => {
           select: "name",
         },
       });
+      const token = jwt.sign(
+        {
+          email: userExisting.email ,
+        },
+        process.env.PASSPORT_SECRET_KEY,
+        { expiresIn: "1h" }
+      );
       return res.status(200).json({
         message: "User data is fetched successfully from db",
         status: "success",
@@ -124,6 +132,7 @@ module.exports.SignIn = async (req, res) => {
         allBlogs,
         allSavedBlogs,
         allPostedBlogs,
+        token,
       });
     }
   } catch (error) {

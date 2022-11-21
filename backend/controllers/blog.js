@@ -1,17 +1,53 @@
 const Blog = require("../model/blogs");
 const PostedBlog = require("../model/UserPostedBlogs");
 const SavedBlog = require("../model/userSavedLists");
+require("dotenv").config();
+
+// agent to interact with aws s3 bucket
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const accessKey = process.env.ACCESS_KEY;
+const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+const bucketRegion = process.env.BUCKET_REGION;
+const bucketName = process.env.BUCKET_NAME;
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: accessKey,
+    secretAccessKey,
+  },
+  region: bucketRegion,
+});
 
 module.exports.createBlog = async (req, res) => {
   try {
     const { title, brief, category, estimated, description, user } =
       req.body || {};
-    const { image } = req.file || {};
+    const { originalname, buffer, mimetype } = req.file || {};
+    const putParams = {
+      Bucket: bucketName,
+      Key: originalname,
+      Body: buffer,
+      ContentType: mimetype,
+    };
+
+    const putCommand = new PutObjectCommand(putParams);
+    await s3.send(putCommand);
+    const getParams = {
+      Bucket: bucketName,
+      Key: originalname,
+    };
+
+    const getCommand = new GetObjectCommand(getParams);
+    const imageUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     const newBlog = await Blog.create({
       user,
       title,
       brief,
-      image,
+      image: imageUrl,
       category,
       estimated,
       description,
@@ -81,13 +117,13 @@ module.exports.saveBlog = async (req, res) => {
 
 module.exports.getAllBlogs = async (req, res) => {
   try {
-    const allBlogs = await Blog.find({}).populate('user', 'name');
-    console.log('allBlogs', allBlogs);
+    const allBlogs = await Blog.find({}).populate("user", "name");
+    console.log("allBlogs", allBlogs);
     return res.status(200).json({
-        message: 'Successfully fetched the blogs from database',
-        status: 'success',
-        blogs: allBlogs,
-    })
+      message: "Successfully fetched the blogs from database",
+      status: "success",
+      blogs: allBlogs,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Something went wrong",

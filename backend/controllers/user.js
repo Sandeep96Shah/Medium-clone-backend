@@ -4,12 +4,32 @@ const SavedBlog = require("../model/userSavedLists");
 const PostedBlog = require("../model/UserPostedBlogs");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
+require("dotenv").config();
+
+// agent to interact with aws s3 bucket
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const accessKey = process.env.ACCESS_KEY;
+const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+const bucketRegion = process.env.BUCKET_REGION;
+const bucketName = process.env.BUCKET_NAME;
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: accessKey,
+    secretAccessKey,
+  },
+  region: bucketRegion,
+});
 
 // creating new user
 module.exports.CreateUser = async (req, res) => {
   try {
     const { name, email, password, confirmPassword } = req.body || {};
-    const { avatar } = req.file || {};
+    const { originalname, buffer, mimetype } = req.file || {};
     if (password !== confirmPassword) {
       return res.status(400).json({
         message: "Password and Confirm password does not matched!",
@@ -23,12 +43,28 @@ module.exports.CreateUser = async (req, res) => {
         status: "failure",
       });
     }
+    const putParams = {
+      Bucket: bucketName,
+      Key: originalname,
+      Body: buffer,
+      ContentType: mimetype,
+    }
+
+    const putCommand = new PutObjectCommand(putParams);
+    await s3.send(putCommand);
+    const getParams = {
+      Bucket: bucketName,
+      Key: originalname,
+    }
+
+    const getCommand = new GetObjectCommand(getParams);
+    const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const newUser = await User.create({
       name,
       email,
       password: hashedPassword,
-      avatar,
+      avatar: avatarUrl,
     });
     return res.status(200).json({
       message: "User Created Successfully",
@@ -64,23 +100,23 @@ module.exports.SignIn = async (req, res) => {
       const allSavedBlogs = await SavedBlog.findOne({
         user: userExisting._id,
       }).populate({
-        path: 'blogs',
+        path: "blogs",
         populate: {
-            path: 'user',
-            select: 'name',
-        }
-      })
+          path: "user",
+          select: "name",
+        },
+      });
 
       // todo get the following info
       const allPostedBlogs = await PostedBlog.findOne({
         user: userExisting._id,
       }).populate({
-        path: 'blogs',
+        path: "blogs",
         populate: {
-            path: 'user',
-            select: 'name',
-        }
-      })
+          path: "user",
+          select: "name",
+        },
+      });
       return res.status(200).json({
         message: "User data is fetched successfully from db",
         status: "success",

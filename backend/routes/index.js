@@ -11,7 +11,7 @@ const blogController = require("../controllers/blog");
 
 router.get("/", blogController.getAllBlogs);
 
-router.post("/sign-up", upload.single("avatar"), userController.CreateUser);
+router.post("/sign-up", userController.CreateUser);
 
 router.post("/sign-in", userController.SignIn);
 

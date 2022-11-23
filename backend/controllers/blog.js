@@ -22,6 +22,37 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
+const commonMethod = async (blogs, avatarUrl) => {
+  for (let blog of blogs) {
+    // const getParamsAvatar = {
+    //   Bucket: bucketName,
+    //   Key: blog.user.avatar,
+    // };
+
+    // //console.log('blog.user.avatar', blog.user)
+
+    // const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+    // const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+    //   expiresIn: 360000,
+    // });
+
+    //console.log('avatarUrl', avatarUrl)
+
+    blog.user.avatar = avatarUrl;
+
+    const getParamsImage = {
+      Bucket: bucketName,
+      Key: blog.image,
+    };
+
+    const getCommandImage = new GetObjectCommand(getParamsImage);
+    const imageUrl = await getSignedUrl(s3, getCommandImage, {
+      expiresIn: 360000,
+    });
+    blog.image = imageUrl;
+  }
+}
+
 module.exports.createBlog = async (req, res) => {
   try {
     const { title, brief, category, estimated, description, user } =
@@ -36,41 +67,60 @@ module.exports.createBlog = async (req, res) => {
 
     const putCommand = new PutObjectCommand(putParams);
     await s3.send(putCommand);
-    const getParams = {
-      Bucket: bucketName,
-      Key: originalname,
-    };
+    // const getParams = {
+    //   Bucket: bucketName,
+    //   Key: originalname,
+    // };
 
-    const getCommand = new GetObjectCommand(getParams);
-    const imageUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
+    // const getCommand = new GetObjectCommand(getParams);
+    // const imageUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     const newBlog = await Blog.create({
       user,
       title,
       brief,
-      image: imageUrl,
+      image: originalname,
       category,
       estimated,
       description,
     });
     const userPostedBlog = await PostedBlog.findOne({ user });
     if (!userPostedBlog) {
-      const newPostedBlog = await PostedBlog.create({
+      await PostedBlog.create({
         user,
         blogs: [newBlog._id],
       });
-      return res.status(200).json({
-        message: "Blog created successfully",
-        status: "success",
-        blog: newBlog,
-        postedBlogs: newPostedBlog,
-      });
+    } else {
+      userPostedBlog.blogs.push(newBlog._id);
+      await userPostedBlog.save();
     }
-    await userPostedBlog.blogs.push(newBlog._id);
+
+    const updatedUserPostedBlog = await PostedBlog.findOne({ user }).populate({
+      path: "blogs",
+      populate: {
+        path: "user",
+        select: "name avatar",
+      },
+    });
+
+    const getParamsAvatar = {
+      Bucket: bucketName,
+      Key: 'commonAvatar.webp',
+    };
+
+    //console.log('blog.user.avatar', blog.user)
+
+    const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+    const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+      expiresIn: 360000,
+    });
+    
+    await commonMethod(updatedUserPostedBlog.blogs, avatarUrl);
+   
     return res.status(200).json({
       message: "Blog created successfully",
       status: "success",
       blog: newBlog,
-      postedBlogs: userPostedBlog,
+      postedBlogs: updatedUserPostedBlog,
     });
   } catch (error) {
     return res.status(500).json({
@@ -98,9 +148,22 @@ module.exports.saveBlog = async (req, res) => {
       path: "blogs",
       populate: {
         path: "user",
-        select: "name",
+        select: "name avatar",
       },
     });
+
+    const getParamsAvatar = {
+      Bucket: bucketName,
+      Key: 'commonAvatar.webp',
+    };
+
+    const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+    const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+      expiresIn: 360000,
+    });
+
+    await commonMethod(allSavedBlogs.blogs, avatarUrl);
+  
     return res.status(200).json({
       message: "Blog Saved in list successfully",
       status: "success",
@@ -117,8 +180,23 @@ module.exports.saveBlog = async (req, res) => {
 
 module.exports.getAllBlogs = async (req, res) => {
   try {
-    const allBlogs = await Blog.find({}).populate("user", "name");
-    console.log("allBlogs", allBlogs);
+    const allBlogs = await Blog.find({}).populate("user", "name avatar");
+    const updatedAllBlogs = [];
+
+    const getParamsAvatar = {
+      Bucket: bucketName,
+      Key: 'commonAvatar.webp',
+    };
+
+    //console.log('blog.user.avatar', blog.user)
+
+    const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+    const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+      expiresIn: 360000,
+    });
+    
+    await commonMethod(allBlogs, avatarUrl);
+
     return res.status(200).json({
       message: "Successfully fetched the blogs from database",
       status: "success",

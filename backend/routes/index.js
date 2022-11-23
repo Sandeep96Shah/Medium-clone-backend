@@ -28,4 +28,6 @@ router.post(
   blogController.saveBlog
 );
 
+router.get('/user-details', passport.authenticate("jwt", { session: false }), userController.userDetails);
+
 module.exports = router;

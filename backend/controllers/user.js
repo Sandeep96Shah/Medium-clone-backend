@@ -124,6 +124,34 @@ module.exports.SignIn = async (req, res) => {
       userExisting.password
     );
 
+    if (isPasswordMatched) {
+      const token = jwt.sign(
+        {
+          email: userExisting.email,
+        },
+        process.env.PASSPORT_SECRET_KEY,
+        { expiresIn: "1h" }
+      );
+      return res.status(200).json({
+        message: "User data is fetched successfully from db",
+        status: "success",
+        token,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      message: "something went wrong",
+      status: "failure",
+      error,
+    });
+  }
+};
+
+module.exports.userDetails = async (req, res) => {
+  try {
+    const { email } = req.user || {};
+    const userExisting = await User.findOne({ email: email });
+
     const getParamsAvatar = {
       Bucket: bucketName,
       Key: 'commonAvatar.webp',
@@ -134,7 +162,6 @@ module.exports.SignIn = async (req, res) => {
       expiresIn: 360000,
     });
 
-    if (isPasswordMatched) {
       const allBlogs = await Blog.find({}).populate("user", "name avatar");
 
       await commonMethod(allBlogs, avatarUrl);
@@ -168,14 +195,6 @@ module.exports.SignIn = async (req, res) => {
         await commonMethod(allPostedBlogs.blogs, avatarUrl);
       }
 
-
-      const token = jwt.sign(
-        {
-          email: userExisting.email,
-        },
-        process.env.PASSPORT_SECRET_KEY,
-        { expiresIn: "1h" }
-      );
       return res.status(200).json({
         message: "User data is fetched successfully from db",
         status: "success",
@@ -183,9 +202,7 @@ module.exports.SignIn = async (req, res) => {
         allBlogs,
         allSavedBlogs,
         allPostedBlogs,
-        token,
       });
-    }
   } catch (error) {
     return res.status(500).json({
       message: "something went wrong",
@@ -193,4 +210,4 @@ module.exports.SignIn = async (req, res) => {
       error,
     });
   }
-};
+}

@@ -30,4 +30,6 @@ router.post(
 
 router.get('/user-details', passport.authenticate("jwt", { session: false }), userController.userDetails);
 
+router.get('/blog-details/:id', passport.authenticate("jwt", { session: false }), blogController.blogDetails);
+
 module.exports = router;

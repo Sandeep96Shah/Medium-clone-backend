@@ -133,7 +133,7 @@ module.exports.createBlog = async (req, res) => {
 
 module.exports.saveBlog = async (req, res) => {
   try {
-    const { userId, blogId } = req.body || {};
+    const {userId,  blogId } = req.body || {};
     const existingUser = await SavedBlog.findOne({ user: userId });
     if (!existingUser) {
       const newSavedList = await SavedBlog.create({
@@ -210,3 +210,45 @@ module.exports.getAllBlogs = async (req, res) => {
     });
   }
 };
+
+module.exports.blogDetails = async (req, res) => {
+  try {
+    const { id } = req.params || {};
+    const blogDetails = await Blog.findById(id).populate('user', "name avatar");
+
+    const getParamsAvatar = {
+      Bucket: bucketName,
+      Key: 'commonAvatar.webp',
+    };
+
+    const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+    const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+      expiresIn: 360000,
+    });
+
+    const getParamsImage = {
+      Bucket: bucketName,
+      Key: blogDetails.image,
+    };
+
+    const getCommandImage = new GetObjectCommand(getParamsImage);
+    const imageUrl = await getSignedUrl(s3, getCommandImage, {
+      expiresIn: 360000,
+    });
+
+    blogDetails.image = imageUrl;
+    blogDetails.user.avatar = avatarUrl;
+    return res.status(200).json({
+      message: 'Fetched blog details from db',
+      status: 'success',
+      blogDetails,
+    })
+
+  }catch(error){
+    return res.status(500).json({
+      message: "Something went wrong",
+      status: "failure",
+      error,
+    });
+  }
+}

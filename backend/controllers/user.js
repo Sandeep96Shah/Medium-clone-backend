@@ -130,7 +130,7 @@ module.exports.SignIn = async (req, res) => {
           email: userExisting.email,
         },
         process.env.PASSPORT_SECRET_KEY,
-        { expiresIn: "1h" }
+        { expiresIn: "5h" }
       );
       return res.status(200).json({
         message: "User data is fetched successfully from db",
@@ -175,7 +175,6 @@ module.exports.userDetails = async (req, res) => {
           select: "name",
         },
       });
-
       if(allSavedBlogs) {
         await commonMethod(allSavedBlogs.blogs, avatarUrl);
       }

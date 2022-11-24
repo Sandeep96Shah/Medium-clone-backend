@@ -29,14 +29,11 @@ const commonMethod = async (blogs, avatarUrl) => {
     //   Key: blog.user.avatar,
     // };
 
-    // //console.log('blog.user.avatar', blog.user)
-
     // const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
     // const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
     //   expiresIn: 360000,
     // });
 
-    //console.log('avatarUrl', avatarUrl)
 
     blog.user.avatar = avatarUrl;
 
@@ -106,8 +103,6 @@ module.exports.createBlog = async (req, res) => {
       Bucket: bucketName,
       Key: 'commonAvatar.webp',
     };
-
-    //console.log('blog.user.avatar', blog.user)
 
     const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
     const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
@@ -187,8 +182,6 @@ module.exports.getAllBlogs = async (req, res) => {
       Bucket: bucketName,
       Key: 'commonAvatar.webp',
     };
-
-    //console.log('blog.user.avatar', blog.user)
 
     const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
     const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {

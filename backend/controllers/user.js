@@ -162,6 +162,8 @@ module.exports.userDetails = async (req, res) => {
       expiresIn: 360000,
     });
 
+    userExisting.avatar = avatarUrl;
+
       const allBlogs = await Blog.find({}).populate("user", "name avatar");
 
       await commonMethod(allBlogs, avatarUrl);

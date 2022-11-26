@@ -27,18 +27,21 @@ const s3 = new S3Client({
 });
 
 // issue for avatar url is fetched wrong from s3 bucket
-const commonMethod = async (blogs, avatarUrl) => {
+const commonMethod = async (blogs) => {
   for (let blog of blogs) {
-    // const getParams = {
-    //   Bucket: bucketName,
-    //   Key: blog.user.avatar,
-    // };
 
-    // const getCommand = new GetObjectCommand(getParams);
-    // const avatarUrl = await getSignedUrl(s3, getCommand, {
-    //   expiresIn: 360000,
-    // });
-    blog.user.avatar = avatarUrl;
+    if( blog.user.avatar && !blog.user.avatar.includes('https')){
+      const getParamsAvatar = {
+        Bucket: bucketName,
+        Key: blog.user.avatar,
+      };
+  
+      const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+      const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+        expiresIn: 360000,
+      });
+      blog.user.avatar = avatarUrl;
+    }
     
     const getParamsImage = {
       Bucket: bucketName,
@@ -154,7 +157,7 @@ module.exports.userDetails = async (req, res) => {
 
     const getParamsAvatar = {
       Bucket: bucketName,
-      Key: 'commonAvatar.webp',
+      Key: userExisting.avatar,
     };
 
     const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
@@ -166,7 +169,7 @@ module.exports.userDetails = async (req, res) => {
 
       const allBlogs = await Blog.find({}).populate("user", "name avatar");
 
-      await commonMethod(allBlogs, avatarUrl);
+      await commonMethod(allBlogs);
     
       const allSavedBlogs = await SavedBlog.findOne({
         user: userExisting._id,
@@ -174,11 +177,11 @@ module.exports.userDetails = async (req, res) => {
         path: "blogs",
         populate: {
           path: "user",
-          select: "name",
+          select: "name avatar",
         },
       });
       if(allSavedBlogs) {
-        await commonMethod(allSavedBlogs.blogs, avatarUrl);
+        await commonMethod(allSavedBlogs.blogs);
       }
 
       // todo get the following info
@@ -193,7 +196,7 @@ module.exports.userDetails = async (req, res) => {
       });
 
       if(allPostedBlogs) {
-        await commonMethod(allPostedBlogs.blogs, avatarUrl);
+        await commonMethod(allPostedBlogs.blogs);
       }
 
       return res.status(200).json({
@@ -211,4 +214,47 @@ module.exports.userDetails = async (req, res) => {
       error,
     });
   }
+}
+
+module.exports.updateUser = async (req, res) => {
+ try{
+  const { user, name } = req.body || {};
+  const { originalname, buffer, mimetype } = req.file || {};
+  const existingUser = await User.findById(user);
+  existingUser.name = name;
+  existingUser.avatar = originalname;
+
+  await existingUser.save();
+
+   const putParams = {
+      Bucket: bucketName,
+      Key: originalname,
+      Body: buffer,
+      ContentType: mimetype,
+    };
+
+    const putCommand = new PutObjectCommand(putParams);
+    await s3.send(putCommand);
+    const getParams = {
+      Bucket: bucketName,
+      Key: originalname,
+    };
+
+    const getCommand = new GetObjectCommand(getParams);
+    const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
+    existingUser.avatar = avatarUrl;
+
+    return res.status(200).json({
+      message: "User Details is updated successfully",
+      status: 'success',
+      user: existingUser,
+    })
+
+ }catch(error){
+  return res.status(500).json({
+    message: "Error while uploading the user details!",
+    status: 'failure',
+    error,
+  })
+ }
 }

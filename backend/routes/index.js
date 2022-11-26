@@ -28,8 +28,23 @@ router.post(
   blogController.saveBlog
 );
 
-router.get('/user-details', passport.authenticate("jwt", { session: false }), userController.userDetails);
+router.get(
+  "/user-details",
+  passport.authenticate("jwt", { session: false }),
+  userController.userDetails
+);
 
-router.get('/blog-details/:id', passport.authenticate("jwt", { session: false }), blogController.blogDetails);
+router.get(
+  "/blog-details/:id",
+  passport.authenticate("jwt", { session: false }),
+  blogController.blogDetails
+);
+
+router.post(
+  "/update-user",
+  passport.authenticate("jwt", { session: false }),
+  upload.single("avatar"),
+  userController.updateUser
+);
 
 module.exports = router;

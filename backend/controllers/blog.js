@@ -22,20 +22,20 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
-const commonMethod = async (blogs, avatarUrl) => {
+const commonMethod = async (blogs) => {
   for (let blog of blogs) {
-    // const getParamsAvatar = {
-    //   Bucket: bucketName,
-    //   Key: blog.user.avatar,
-    // };
-
-    // const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
-    // const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
-    //   expiresIn: 360000,
-    // });
-
-
-    blog.user.avatar = avatarUrl;
+    if(!blog.user.avatar.includes('https')){
+      const getParamsAvatar = {
+        Bucket: bucketName,
+        Key: blog.user.avatar,
+      };
+  
+      const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+      const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
+        expiresIn: 360000,
+      });
+      blog.user.avatar = avatarUrl;
+    }
 
     const getParamsImage = {
       Bucket: bucketName,

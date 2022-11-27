@@ -221,8 +221,12 @@ module.exports.updateUser = async (req, res) => {
   const { user, name } = req.body || {};
   const { originalname, buffer, mimetype } = req.file || {};
   const existingUser = await User.findById(user);
-  existingUser.name = name;
-  existingUser.avatar = originalname;
+  if(name){
+    existingUser.name = name;
+  }
+  if(originalname) {
+    existingUser.avatar = originalname;
+  }
 
   await existingUser.save();
 
@@ -244,10 +248,15 @@ module.exports.updateUser = async (req, res) => {
     const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     existingUser.avatar = avatarUrl;
 
+    const allBlogs = await Blog.find({}).populate("user", "name avatar");
+
+    await commonMethod(allBlogs);
+
     return res.status(200).json({
       message: "User Details is updated successfully",
       status: 'success',
       user: existingUser,
+      blogs: allBlogs
     })
 
  }catch(error){

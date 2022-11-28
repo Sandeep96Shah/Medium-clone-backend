@@ -61,7 +61,6 @@ const commonMethod = async (blogs) => {
 // creating new user
 module.exports.CreateUser = async (req, res) => {
   try {
-    console.log('req', req)
     const error = validationResult(req);
     if(!error.isEmpty()) {
       return res.status(400).json({
@@ -150,6 +149,10 @@ module.exports.SignIn = async (req, res) => {
         token,
       });
     }
+    return res.status(400).json({
+      message: "Email/Password is incorrect",
+      status: "failure",
+    });
   } catch (error) {
     return res.status(500).json({
       message: "something went wrong",

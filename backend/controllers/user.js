@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const saltRounds = 10;
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const { validationResult } = require('express-validator');
 
 // agent to interact with aws s3 bucket
 const {
@@ -57,10 +58,18 @@ const commonMethod = async (blogs) => {
 
 }
 
-// 'commonAvatar.webp'
 // creating new user
 module.exports.CreateUser = async (req, res) => {
   try {
+    console.log('req', req)
+    const error = validationResult(req);
+    if(!error.isEmpty()) {
+      return res.status(400).json({
+        message: "Validation error",
+        error: error.array(),
+        status: "validate-failure",
+      })
+    }
     const { name, email, password, confirmPassword } = req.body || {};
     if (password !== confirmPassword) {
       return res.status(400).json({

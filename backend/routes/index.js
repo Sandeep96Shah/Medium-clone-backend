@@ -9,9 +9,24 @@ const upload = multer({ storage: storage });
 const userController = require("../controllers/user");
 const blogController = require("../controllers/blog");
 
+const { check } = require("express-validator");
+const SignUpValidator = [
+  check("email", "Email should be in proper format")
+    .trim()
+    .normalizeEmail()
+    .isEmail(),
+  check("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be atleast 8 characters")
+    .matches("[0-9]")
+    .withMessage("Password must contain a Number")
+    .matches("[A-Z]")
+    .withMessage("Password must contain an upperCase letter"),
+];
+
 router.get("/", blogController.getAllBlogs);
 
-router.post("/sign-up", userController.CreateUser);
+router.post("/sign-up", SignUpValidator, userController.CreateUser);
 
 router.post("/sign-in", userController.SignIn);
 

@@ -106,6 +106,7 @@ module.exports.CreateUser = async (req, res) => {
       password: hashedPassword,
       avatar: "commonAvatar.webp",
     });
+    // pass only user-id
     return res.status(200).json({
       message: "User Created Successfully",
       status: "success",

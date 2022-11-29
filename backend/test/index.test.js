@@ -2,6 +2,7 @@ const request = require("supertest");
 const app = require("../index");
 const User = require("../model/user");
 
+// first write all the negative test cases and then positive
 describe("Sign-Up", () => {
   test("should create a user", async () => {
     const response = await request(app)
@@ -296,7 +297,9 @@ describe("Get blog details", () => {
   });
 });
 
-// const poster = require('../assets/image.png');
+// todo later
+// const poster = `${__dirname}/assets/image.png`;
+// console.log("poster", poster);;
 
 // describe('create blog', () => {
 //   test('blog created successfully',async () => {
@@ -309,8 +312,8 @@ describe("Get blog details", () => {
 //       category: "testing",
 //       estimated: 5,
 //       description: "testing purpose",
+//       image: poster,
 //     })
-//     .attach('image',poster)
 //     .set("Authorization", `Bearer ${token}`)
 //     .expect(200);
 //   })

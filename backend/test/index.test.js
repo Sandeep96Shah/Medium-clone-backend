@@ -2,7 +2,6 @@ const request = require("supertest");
 const app = require("../index");
 const User = require("../model/user");
 
-
 describe("Sign-Up", () => {
   test("should create a user", async () => {
     const response = await request(app)
@@ -176,5 +175,177 @@ describe("sign-in", () => {
       message: "Email/Password is incorrect",
       status: "failure",
     });
+  });
+});
+
+describe("public api", () => {
+  test("get all posts", async () => {
+    const response = await request(app).get("/").expect(200);
+    expect(response.body).toMatchObject({
+      message: "Successfully fetched the blogs from database",
+      status: "success",
+    });
+    expect(Array.isArray(response.body.blogs)).toBe(true);
+  });
+});
+
+let token = "";
+let blogId = "";
+let userId = "";
+
+beforeAll(async () => {
+  const response = await request(app)
+    .post("/sign-in")
+    .send({
+      email: "testing@test.com",
+      password: "Testing@12345",
+    })
+    .expect(200);
+  token = response.body.token;
+});
+
+describe("After user has successfully signed in", () => {
+  test("user details", async () => {
+    const response = await request(app)
+      .get("/user-details")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(response.body).toMatchObject({
+      message: "User data is fetched successfully from db",
+      status: "success",
+    });
+    expect(response.body.user && typeof response.body.user === "object").toBe(
+      true
+    );
+    userId = response.body.user._id;
+    expect(Array.isArray(response.body.allBlogs)).toBe(true);
+    expect(
+      response.body.allSavedBlogs &&
+        typeof response.body.allSavedBlogs === "object"
+    ).toBe(true);
+    expect(
+      response.body.allPostedBlogs &&
+        typeof response.body.allPostedBlogs === "object"
+    ).toBe(true);
+  });
+  test("do not get as user details as no token is missing", async () => {
+    const response = await request(app).get("/user-details").expect(401);
+  });
+});
+
+describe("Get blog details", () => {
+  test("receives blog details", async () => {
+    const response = await request(app)
+      .get("/blog-details/637de860f024eefeae209efa")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(response.body).toMatchObject({
+      message: "Fetched blog details from db",
+      status: "success",
+    });
+    expect(
+      response.body.blogDetails && typeof response.body.blogDetails === "object"
+    ).toBe(true);
+    expect(
+      response.body.blogDetails.title && typeof response.body.blogDetails.title
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.brief && typeof response.body.blogDetails.brief
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.image && typeof response.body.blogDetails.image
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.category &&
+        typeof response.body.blogDetails.category
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.estimated &&
+        typeof response.body.blogDetails.estimated
+    ).toBe("number");
+    expect(
+      response.body.blogDetails.description &&
+        typeof response.body.blogDetails.description
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.description &&
+        typeof response.body.blogDetails.description
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.createdAt &&
+        typeof response.body.blogDetails.createdAt
+    ).toBe("string");
+
+    expect(
+      response.body.blogDetails.user &&
+        typeof response.body.blogDetails.user === "object"
+    ).toBe(true);
+    expect(
+      response.body.blogDetails.user.name &&
+        typeof response.body.blogDetails.user.name
+    ).toBe("string");
+    expect(
+      response.body.blogDetails.user.avatar &&
+        typeof response.body.blogDetails.user.avatar
+    ).toBe("string");
+  });
+  test("do not get as user details as no token is missing", async () => {
+    const response = await request(app)
+      .get("/blog-details/637de860f024eefeae209efa")
+      .expect(401);
+  });
+});
+
+// const poster = require('../assets/image.png');
+
+// describe('create blog', () => {
+//   test('blog created successfully',async () => {
+//     const response = await request(app)
+//     .post("/create-blog")
+//     .send({
+//       user: userId,
+//       title: "test",
+//       brief: "test-brief",
+//       category: "testing",
+//       estimated: 5,
+//       description: "testing purpose",
+//     })
+//     .attach('image',poster)
+//     .set("Authorization", `Bearer ${token}`)
+//     .expect(200);
+//   })
+// })
+
+describe("save blog", () => {
+  test("save successfully", async () => {
+    const response = await request(app)
+      .post("/save-blog")
+      .send({
+        userId: "6385a124815630dccabcbdc7",
+        blogId: "637de860f024eefeae209efa",
+      })
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      message: "Blog Saved in list successfully",
+      status: "success",
+    });
+
+    expect(
+      response.body.savedList && typeof response.body.savedList === "object"
+    ).toBe(true);
+
+    expect(Array.isArray(response.body.savedList.blogs)).toBe(true);
+  });
+
+  test("do not save as token is missing", async () => {
+    const response = await request(app)
+      .post("/save-blog")
+      .send({
+        userId: "6385a124815630dccabcbdc7",
+        blogId: "637de860f024eefeae209efa",
+      })
+      .expect(401);
   });
 });

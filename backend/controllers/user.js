@@ -216,8 +216,8 @@ module.exports.userDetails = async (req, res) => {
         status: "success",
         user: userExisting,
         allBlogs,
-        allSavedBlogs,
-        allPostedBlogs,
+        allSavedBlogs: allSavedBlogs || {},
+        allPostedBlogs: allPostedBlogs || {},
       });
   } catch (error) {
     return res.status(500).json({

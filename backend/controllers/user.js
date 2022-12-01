@@ -83,6 +83,7 @@ module.exports.CreateUser = async (req, res) => {
         status: "failure",
       });
     }
+
     // const putParams = {
     //   Bucket: bucketName,
     //   Key: originalname,
@@ -174,6 +175,7 @@ module.exports.userDetails = async (req, res) => {
     };
 
     const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
+   
     const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
       expiresIn: 360000,
     });

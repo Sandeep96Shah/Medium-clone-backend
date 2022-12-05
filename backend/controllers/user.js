@@ -218,25 +218,25 @@ module.exports.updateUser = async (req, res) => {
     const user = await User.findById(userId, 'name email avatar interests following');
     if (name) {
       user.name = name;
+      await user.save();
     }
     if (originalname) {
       user.avatar = originalname;
+      await user.save();
+      const putParams = {
+        Bucket: bucketName,
+        Key: originalname,
+        Body: buffer,
+        ContentType: mimetype,
+      };
+  
+      const putCommand = new PutObjectCommand(putParams);
+      await s3.send(putCommand); 
     }
 
-    await user.save();
-
-    const putParams = {
-      Bucket: bucketName,
-      Key: originalname,
-      Body: buffer,
-      ContentType: mimetype,
-    };
-
-    const putCommand = new PutObjectCommand(putParams);
-    await s3.send(putCommand);
     const getParams = {
       Bucket: bucketName,
-      Key: originalname,
+      Key: user.avatar,
     };
 
     const getCommand = new GetObjectCommand(getParams);
@@ -257,7 +257,7 @@ module.exports.updateUser = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Error while uploading the user details!",
+      message: "Error while updating the user details!",
       status: "failure",
       error,
     });

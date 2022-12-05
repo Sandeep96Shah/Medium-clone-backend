@@ -9,6 +9,9 @@ const mockingoose = require("mockingoose");
 const passport = require("passport");
 const MockStrategy = require("passport-mock-strategy");
 
+// import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+// import { mockClient } from 'aws-sdk-client-mock';
+
 //PostedBlog
 // first write all the negative test cases and then positive
 describe("Sign-Up", () => {
@@ -294,6 +297,11 @@ describe("After user has successfully signed in", () => {
 
   const token = "1werf345678";
 
+  test("do not get as user details as no token is missing", async () => {
+    const response = await request(app).get("/user-details");
+    expect(response.status).toBe(401);
+  });
+
   test("user details", async () => {
     passport.use(
       new MockStrategy(
@@ -313,7 +321,7 @@ describe("After user has successfully signed in", () => {
     mockingoose(User).toReturn(
       {
         _id: "234wertyucvbn",
-        name: "Test",
+        name: "Test123",
         avatar: "avatar.png",
         password: "qwerty234567dfgh",
         email: "testing@test.com",
@@ -361,10 +369,10 @@ describe("After user has successfully signed in", () => {
       message: "User data is fetched successfully from db",
       status: "success",
     });
+
     expect(response.body.user && typeof response.body.user === "object").toBe(
       true
     );
-    userId = response.body.user._id;
     expect(Array.isArray(response.body.allBlogs)).toBe(true);
     expect(
       response.body.allSavedBlogs &&
@@ -375,73 +383,66 @@ describe("After user has successfully signed in", () => {
         typeof response.body.allPostedBlogs === "object"
     ).toBe(true);
   });
-  // test("do not get as user details as no token is missing", async () => {
-  //   const response = await request(app).get("/user-details").expect(401);
-  // });
 });
 
-// describe("Get blog details", () => {
-//   test("receives blog details", async () => {
-//     const response = await request(app)
-//       .get("/blog-details/637de860f024eefeae209efa")
-//       .set("Authorization", `Bearer ${token}`)
-//       .expect(200);
-//     expect(response.body).toMatchObject({
-//       message: "Fetched blog details from db",
-//       status: "success",
-//     });
-//     expect(
-//       response.body.blogDetails && typeof response.body.blogDetails === "object"
-//     ).toBe(true);
-//     expect(
-//       response.body.blogDetails.title && typeof response.body.blogDetails.title
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.brief && typeof response.body.blogDetails.brief
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.image && typeof response.body.blogDetails.image
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.category &&
-//         typeof response.body.blogDetails.category
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.estimated &&
-//         typeof response.body.blogDetails.estimated
-//     ).toBe("number");
-//     expect(
-//       response.body.blogDetails.description &&
-//         typeof response.body.blogDetails.description
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.description &&
-//         typeof response.body.blogDetails.description
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.createdAt &&
-//         typeof response.body.blogDetails.createdAt
-//     ).toBe("string");
+describe("Get blog details", () => {
 
-//     expect(
-//       response.body.blogDetails.user &&
-//         typeof response.body.blogDetails.user === "object"
-//     ).toBe(true);
-//     expect(
-//       response.body.blogDetails.user.name &&
-//         typeof response.body.blogDetails.user.name
-//     ).toBe("string");
-//     expect(
-//       response.body.blogDetails.user.avatar &&
-//         typeof response.body.blogDetails.user.avatar
-//     ).toBe("string");
-//   });
-//   test("do not get as user details as no token is missing", async () => {
-//     const response = await request(app)
-//       .get("/blog-details/637de860f024eefeae209efa")
-//       .expect(401);
-//   });
-// });
+  test("do not get as user details as no token is missing", async () => {
+    const response = await request(app)
+      .get("/blog-details/637de860f024eefeae209efa")
+      
+      expect(response.status).toBe(500)
+  });
+  test("receives blog details", async () => {
+    const token = "rtydf345";
+    passport.use(
+      new MockStrategy(
+        {
+          name: "jwt",
+          user: {
+            _id: "637de4c47370e9a0d625e8fd",
+            name: "Test",
+            email: "testing@test.com",
+          },
+        },
+        (user, done) => {
+          return done(null, user);
+        }
+      )
+    );
+    Blog.schema.path("user", Object);
+    mockingoose(Blog).toReturn(
+      {
+        _id: "qwertyuisdfghj123456",
+        user: {
+          _id: "qwsdfvpokijnhbwerty",
+          name: "Test",
+          avatar: "test.png",
+        },
+        title: "Demo",
+        brief: "Demo testing",
+        estimated: 5,
+        image: "test.png",
+        category: "demo",
+        description: "demo description",
+        createdAt: "02/12/2022",
+      },
+      "findOne"
+    );
+    const response = await request(app)
+      .get(
+        "/blog-details/qwertyuisdfghj123456",
+        passport.authenticate("jwt")
+      )
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      message: "Fetched blog details from db",
+      status: "success",
+    });
+  });
+});
 
 // // todo later
 // // const poster = `${__dirname}/assets/image.png`;
@@ -487,9 +488,125 @@ describe("After user has successfully signed in", () => {
 // // })
 
 // describe("save blog", () => {
+
+//   // test("do not save as token is missing", async () => {
+//   //   const response = await request(app)
+//   //     .post("/save-blog")
+//   //     .send({
+//   //       userId: "6385a124815630dccabcbdc7",
+//   //       blogId: "637de860f024eefeae209efa",
+//   //     })
+      
+//   //     expect(response.status).toBe(500);
+//   // });
 //   test("save successfully", async () => {
+
+//     passport.use(
+//       new MockStrategy(
+//         {
+//           name: "jwt",
+//           user: {
+//             _id: "637de4c47370e9a0d625e8fd",
+//             name: "Test",
+//             email: "testing@test.com",
+//           },
+//         },
+//         (user, done) => {
+//           return done(null, user);
+//         }
+//       )
+//     );
+
+//     const token = "qwertyxcvb456";
+
+
+//     // mockingoose(SavedBlog).toReturn(
+//     //   {
+//     //     _id: "234wertyucvbn",
+//     //     user: "qqwert234567",
+//     //     blogs: [],
+//     //   },
+//     //   "findOne"
+//     // );
+
+//     SavedBlog.schema.path('blogs', Object);
+//     mockingoose(SavedBlog).toReturn({
+//       // _id: "2345678wert",
+//       user: "234567qwertkjnbv",
+//       blogs: [
+//         {
+//           _id: "qwertyuisdfghj123456",
+//           user: {
+//             _id: "qwsdfvpokijnhbwerty",
+//             name: "Test",
+//             avatar: "test.png",
+//           },
+//           title: "Demo",
+//           brief: "Demo testing",
+//           estimated: 5,
+//           image: "test.png",
+//           category: "demo",
+//           description: "demo description",
+//           createdAt: "02/12/2022",
+//         }
+//       ], 
+//     }, 'findOne')
+    
+//     SavedBlog.schema.path('blogs', Object);
+//     mockingoose(SavedBlog).toReturn( {
+//       // _id: "2345678wert",
+//       user: "234567qwertkjnbv",
+//       blogs: [
+//         {
+//           _id: "qwertyuisdfghj123456",
+//           user: {
+//             _id: "qwsdfvpokijnhbwerty",
+//             name: "Test",
+//             avatar: "test.png",
+//           },
+//           title: "Demo",
+//           brief: "Demo testing",
+//           estimated: 5,
+//           image: "test.png",
+//           category: "demo",
+//           description: "demo description",
+//           createdAt: "02/12/2022",
+//         },
+//         {
+//           _id: "qwertyuisdfghj123456",
+//           user: {
+//             _id: "qwsdfvpokijnhbwerty",
+//             name: "Test",
+//             avatar: "test.png",
+//           },
+//           title: "Demo",
+//           brief: "Demo testing",
+//           estimated: 5,
+//           image: "test.png",
+//           category: "demo",
+//           description: "demo description",
+//           createdAt: "02/12/2022",
+//         }
+//       ]
+//     }, 'save');
+
+//     // mockingoose(SavedBlog).toReturn(
+//     //   {
+//     //     // _id: "234wertyucvbn",
+//     //     user: "qqwert234567",
+//     //     blogs: [],
+//     //   },
+//     //   "findOne"
+//     // )
+//     // .toReturn( {
+//     //   _id: "234wertyucvbn",
+//     //   user: "qqwert234567",
+//     //   blogs: ['qqwert234567'],
+//     // }, 'save');
+   
+
 //     const response = await request(app)
-//       .post("/save-blog")
+//       .post("/save-blog", passport.authenticate("jwt"))
 //       .send({
 //         userId: "6385a124815630dccabcbdc7",
 //         blogId: "637de860f024eefeae209efa",
@@ -509,13 +626,4 @@ describe("After user has successfully signed in", () => {
 //     expect(Array.isArray(response.body.savedList.blogs)).toBe(true);
 //   });
 
-//   test("do not save as token is missing", async () => {
-//     const response = await request(app)
-//       .post("/save-blog")
-//       .send({
-//         userId: "6385a124815630dccabcbdc7",
-//         blogId: "637de860f024eefeae209efa",
-//       })
-//       .expect(401);
-//   });
 // });

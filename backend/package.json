@@ -15,6 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.213.0",
     "@aws-sdk/s3-request-presigner": "^3.213.0",
+    "aws-sdk-client-mock": "^2.0.1",
     "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",

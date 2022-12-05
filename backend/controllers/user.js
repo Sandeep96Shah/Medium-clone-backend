@@ -7,28 +7,23 @@ const saltRounds = 10;
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
-const { getUrls } = require("../utils/getImageUrl");
-
-// agent to interact with aws s3 bucket
+const { getUrls, s3 } = require("../utils/getImageUrl");
 const {
-  S3Client,
   PutObjectCommand,
   GetObjectCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const accessKey = process.env.ACCESS_KEY;
-const secretAccessKey = process.env.SECRET_ACCESS_KEY;
-const bucketRegion = process.env.BUCKET_REGION;
 const bucketName = process.env.BUCKET_NAME;
-const s3 = new S3Client({
-  credentials: {
-    accessKeyId: accessKey,
-    secretAccessKey,
-  },
-  region: bucketRegion,
-});
 
-// creating new user
+/**
+ *
+ * @property {object} error - contains data related to failed validation
+ * @property {object} user - contains user which is fetched from DB
+ * @property {string} hashedPassword - contains hash format of password
+ * @returns {object} {message: string, error: array, status: string} - when validation fails
+ * @returns {object} {message: string, status: string} - in case of success or any mis-matched operation
+ * @returns {object} {message: string, error: object, status: string} - when any operation fails to execute
+ */
 module.exports.CreateUser = async (req, res) => {
   try {
     const error = validationResult(req);
@@ -75,6 +70,18 @@ module.exports.CreateUser = async (req, res) => {
   }
 };
 
+/**
+ *
+ * @param {*} req
+ * @param {*} res
+ * @property {object} user - contains used data, fetched from DB
+ * @property {boolean} isPasswordMatched - will have true when password matched else false
+ * @property {string} token - token string
+ * @returns {object} {message: string, status: string, token: string} - if password matched
+ * @returns {object} {message: string, status: string} - if password does not match or user doesn;t exists
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute.
+ */
+
 module.exports.SignIn = async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -114,11 +121,22 @@ module.exports.SignIn = async (req, res) => {
   }
 };
 
+/**
+ *
+ * @property {object} user - contains user data fethced from DB
+ * @property {object} getParamsAvatar - contains bucket name of aws and the key
+ * @property {string} avatarUrl - contains url of the user avatart fetched from aws
+ * @property {object} blogs - contains blogs data, fethced from DB
+ * @property {object} savedBlogs - contains user saved blogs data, fetched from DB
+ * @property {object} postedBlogs - contains user posted blogs data, fethced from DB
+ * @returns {object} {message: string, status: string, data: object} - if every operation executes successfully
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ */
+
 module.exports.userDetails = async (req, res) => {
   try {
     const { email } = req.user || {};
-    const user = await User.findOne({ email: email });
-
+    const user = await User.findOne({ email: email }, 'name email avatar following interests');
     const getParamsAvatar = {
       Bucket: bucketName,
       Key: user.avatar,
@@ -183,11 +201,21 @@ module.exports.userDetails = async (req, res) => {
   }
 };
 
+/**
+ * 
+ * @property {object} user - user data, fethced from DB
+ * @property {object} putParams - contains data based on which the data is saved on aws s3 bucket
+ * @property {string} avatarUrl - contains user avatart url
+ * @property {object} blogs - contains all the blogs data, fetched from DB
+ * @returns {object} {message: string, status: string, data: object} - if every operation get executed successfully
+ * @returns {object} {message:string, status: string, error: object} - if any operation fails to execute
+ */
+
 module.exports.updateUser = async (req, res) => {
   try {
     const { userId, name } = req.body || {};
     const { originalname, buffer, mimetype } = req.file || {};
-    const user = await User.findById(userId);
+    const user = await User.findById(userId, 'name email avatar interests following');
     if (name) {
       user.name = name;
     }

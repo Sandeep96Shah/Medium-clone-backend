@@ -2,26 +2,23 @@ const Blog = require("../model/blogs");
 const PostedBlog = require("../model/UserPostedBlogs");
 const SavedBlog = require("../model/userSavedLists");
 require("dotenv").config();
-const { getUrls } = require("../utils/getImageUrl");
-
-// agent to interact with aws s3 bucket
+const { getUrls, s3 } = require("../utils/getImageUrl");
 const {
-  S3Client,
   PutObjectCommand,
   GetObjectCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const accessKey = process.env.ACCESS_KEY;
-const secretAccessKey = process.env.SECRET_ACCESS_KEY;
-const bucketRegion = process.env.BUCKET_REGION;
 const bucketName = process.env.BUCKET_NAME;
-const s3 = new S3Client({
-  credentials: {
-    accessKeyId: accessKey,
-    secretAccessKey,
-  },
-  region: bucketRegion,
-});
+
+/**
+ * 
+ * @property {object} putParams - contains data related to the bucket and the item to be saved in s3 bucket
+ * @property {object} newBlog - contains data related to the newly created blog
+ * @property {object} userPostedList - contains data related to user and array of blogs id which he/she has posted
+ * @property {object} postedBlogs - contains blogs whcih the user has posted
+ * @returns {object} {message: string, status: string} - if every operation executes successfully
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ */
 
 module.exports.createBlog = async (req, res) => {
   try {
@@ -85,6 +82,14 @@ module.exports.createBlog = async (req, res) => {
   }
 };
 
+/**
+ * 
+ * @property {object} userSavedList = contains data related to current userId and array of blogsId
+ * @property {object} savedList - contains data related to blogs which the current user has saved
+ * @returns {object} {message: string, status: string, data: object} - if every operation gets eecuted successfully
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ */
+
 module.exports.saveBlog = async (req, res) => {
   try {
     const { userId, blogId } = req.body || {};
@@ -108,8 +113,6 @@ module.exports.saveBlog = async (req, res) => {
 
     await getUrls(savedList.blogs);
 
-    console.log("savedList",savedList);
-
     return res.status(200).json({
       message: "Blog Saved in list successfully",
       status: "success",
@@ -125,6 +128,13 @@ module.exports.saveBlog = async (req, res) => {
     });
   }
 };
+
+/**
+ * 
+ * @property {object} blogs - contains data related tp all blogs fetched from DB
+ * @returns {object} {message: string, status: string, data: string} - if every operation executes successfully
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ */
 
 module.exports.getAllBlogs = async (req, res) => {
   try {
@@ -147,6 +157,18 @@ module.exports.getAllBlogs = async (req, res) => {
     });
   }
 };
+
+/**
+ * 
+ * @property {object} blogDetails - contains the details data related to the blog
+ * @property {object} getParamsAvatar - contains the data by which user avatar url is fetched from aws s3 bucket
+ * @property {string} avatarUrl - contains the avatar url received from aws s3 bucket
+ * @property {object} getParamsImage - contains the data by which the blog image url is fetched from aws s3 bucket
+ * @property {string} imageUrl - contains the blog image url received from aws s3 bucket
+ * @returns {object} {message: string, status: string, data: object} - if every operations executes successfully
+ * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ * @returns 
+ */
 
 module.exports.blogDetails = async (req, res) => {
   try {

@@ -2,6 +2,7 @@ const Blog = require("../model/blogs");
 const PostedBlog = require("../model/UserPostedBlogs");
 const SavedBlog = require("../model/userSavedLists");
 require("dotenv").config();
+const { getUrls } = require("../utils/getImageUrl");
 
 // agent to interact with aws s3 bucket
 const {
@@ -22,34 +23,6 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
-const commonMethod = async (blogs) => {
-  for (let blog of blogs) {
-    if (!blog.user.avatar.includes("https")) {
-      const getParamsAvatar = {
-        Bucket: bucketName,
-        Key: blog.user.avatar,
-      };
-
-      const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
-      const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
-        expiresIn: 360000,
-      });
-      blog.user.avatar = avatarUrl;
-    }
-
-    const getParamsImage = {
-      Bucket: bucketName,
-      Key: blog.image,
-    };
-
-    const getCommandImage = new GetObjectCommand(getParamsImage);
-    const imageUrl = await getSignedUrl(s3, getCommandImage, {
-      expiresIn: 360000,
-    });
-    blog.image = imageUrl;
-  }
-};
-
 module.exports.createBlog = async (req, res) => {
   try {
     const { title, brief, category, estimated, description, user } =
@@ -64,13 +37,7 @@ module.exports.createBlog = async (req, res) => {
 
     const putCommand = new PutObjectCommand(putParams);
     await s3.send(putCommand);
-    // const getParams = {
-    //   Bucket: bucketName,
-    //   Key: originalname,
-    // };
 
-    // const getCommand = new GetObjectCommand(getParams);
-    // const imageUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     const newBlog = await Blog.create({
       user,
       title,
@@ -80,18 +47,18 @@ module.exports.createBlog = async (req, res) => {
       estimated,
       description,
     });
-    const userPostedBlog = await PostedBlog.findOne({ user });
-    if (!userPostedBlog) {
+    const userPostedList = await PostedBlog.findOne({ user });
+    if (!userPostedList) {
       await PostedBlog.create({
         user,
         blogs: [newBlog._id],
       });
     } else {
-      userPostedBlog.blogs.push(newBlog._id);
-      await userPostedBlog.save();
+      userPostedList.blogs.push(newBlog._id);
+      await userPostedList.save();
     }
 
-    const updatedUserPostedBlog = await PostedBlog.findOne({ user }).populate({
+    const postedBlogs = await PostedBlog.findOne({ user }).populate({
       path: "blogs",
       populate: {
         path: "user",
@@ -99,13 +66,15 @@ module.exports.createBlog = async (req, res) => {
       },
     });
 
-    await commonMethod(updatedUserPostedBlog.blogs);
+    await getUrls(postedBlogs.blogs);
 
     return res.status(200).json({
       message: "Blog created successfully",
       status: "success",
-      blog: newBlog,
-      postedBlogs: updatedUserPostedBlog,
+      // data: {
+      //   blog: newBlog,
+      //   postedBlogs: postedBlogs,
+      // },
     });
   } catch (error) {
     return res.status(500).json({
@@ -119,17 +88,17 @@ module.exports.createBlog = async (req, res) => {
 module.exports.saveBlog = async (req, res) => {
   try {
     const { userId, blogId } = req.body || {};
-    const existingUser = await SavedBlog.findOne({ user: userId });
-    if (!existingUser) {
-      const newSavedList = await SavedBlog.create({
+    const userSavedList = await SavedBlog.findOne({ user: userId });
+    if (!userSavedList) {
+      await SavedBlog.create({
         user: userId,
         blogs: [blogId],
       });
     } else {
-      existingUser.blogs.push(blogId);
-      await existingUser.save();
+      userSavedList.blogs.push(blogId);
+      await userSavedList.save();
     }
-    const allSavedBlogs = await SavedBlog.findOne({ user: userId }).populate({
+    const savedList = await SavedBlog.findOne({ user: userId }).populate({
       path: "blogs",
       populate: {
         path: "user",
@@ -137,12 +106,16 @@ module.exports.saveBlog = async (req, res) => {
       },
     });
 
-    await commonMethod(allSavedBlogs.blogs);
+    await getUrls(savedList.blogs);
+
+    console.log("savedList",savedList);
 
     return res.status(200).json({
       message: "Blog Saved in list successfully",
       status: "success",
-      savedList: allSavedBlogs,
+      data: {
+        savedList,
+      },
     });
   } catch (error) {
     return res.status(500).json({
@@ -155,14 +128,16 @@ module.exports.saveBlog = async (req, res) => {
 
 module.exports.getAllBlogs = async (req, res) => {
   try {
-    const allBlogs = await Blog.find({}).populate("user", "name avatar");
+    const blogs = await Blog.find({}).populate("user", "name avatar");
 
-    await commonMethod(allBlogs);
+    await getUrls(blogs);
 
     return res.status(200).json({
       message: "Successfully fetched the blogs from database",
       status: "success",
-      blogs: allBlogs,
+      data: {
+        blogs,
+      },
     });
   } catch (error) {
     return res.status(500).json({
@@ -202,7 +177,9 @@ module.exports.blogDetails = async (req, res) => {
     return res.status(200).json({
       message: "Fetched blog details from db",
       status: "success",
-      blogDetails,
+      data: {
+        blogDetails,
+      },
     });
   } catch (error) {
     return res.status(500).json({

@@ -6,7 +6,8 @@ const bcrypt = require("bcrypt");
 const saltRounds = 10;
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
-const { validationResult } = require('express-validator');
+const { validationResult } = require("express-validator");
+const { getUrls } = require("../utils/getImageUrl");
 
 // agent to interact with aws s3 bucket
 const {
@@ -27,47 +28,16 @@ const s3 = new S3Client({
   region: bucketRegion,
 });
 
-// issue for avatar url is fetched wrong from s3 bucket
-const commonMethod = async (blogs) => {
-  for (let blog of blogs) {
-
-    if( blog.user.avatar && !blog.user.avatar.includes('https')){
-      const getParamsAvatar = {
-        Bucket: bucketName,
-        Key: blog.user.avatar,
-      };
-  
-      const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
-      const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
-        expiresIn: 360000,
-      });
-      blog.user.avatar = avatarUrl;
-    }
-    
-    const getParamsImage = {
-      Bucket: bucketName,
-      Key: blog.image,
-    };
-
-    const getCommandImage = new GetObjectCommand(getParamsImage);
-    const imageUrl = await getSignedUrl(s3, getCommandImage, {
-      expiresIn: 360000,
-    });
-    blog.image = imageUrl;
-  }
-
-}
-
 // creating new user
 module.exports.CreateUser = async (req, res) => {
   try {
     const error = validationResult(req);
-    if(!error.isEmpty()) {
+    if (!error.isEmpty()) {
       return res.status(400).json({
         message: "Validation error",
         error: error.array(),
         status: "validate-failure",
-      })
+      });
     }
     const { name, email, password, confirmPassword } = req.body || {};
     if (password !== confirmPassword) {
@@ -76,32 +46,16 @@ module.exports.CreateUser = async (req, res) => {
         status: "failure",
       });
     }
-    const existingUser = await User.findOne({ email: email });
-    if (existingUser) {
+    const user = await User.findOne({ email: email });
+    if (user) {
       return res.status(400).json({
         message: "User already exists",
         status: "failure",
       });
     }
 
-    // const putParams = {
-    //   Bucket: bucketName,
-    //   Key: originalname,
-    //   Body: buffer,
-    //   ContentType: mimetype,
-    // };
-
-    // const putCommand = new PutObjectCommand(putParams);
-    // await s3.send(putCommand);
-    // const getParams = {
-    //   Bucket: bucketName,
-    //   Key: originalname,
-    // };
-
-    // const getCommand = new GetObjectCommand(getParams);
-    // const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const newUser = await User.create({
+    await User.create({
       name,
       email,
       password: hashedPassword,
@@ -111,7 +65,6 @@ module.exports.CreateUser = async (req, res) => {
     return res.status(200).json({
       message: "User Created Successfully",
       status: "success",
-      user: newUser,
     });
   } catch (error) {
     return res.status(500).json({
@@ -125,22 +78,19 @@ module.exports.CreateUser = async (req, res) => {
 module.exports.SignIn = async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    const userExisting = await User.findOne({ email: email });
-    if (!userExisting) {
+    const user = await User.findOne({ email: email });
+    if (!user) {
       return res.status(400).json({
         message: "You need to create an account first",
         status: "failure",
       });
     }
-    const isPasswordMatched = await bcrypt.compare(
-      password,
-      userExisting.password
-    );
+    const isPasswordMatched = await bcrypt.compare(password, user.password);
 
     if (isPasswordMatched) {
       const token = jwt.sign(
         {
-          email: userExisting.email,
+          email: user.email,
         },
         process.env.PASSPORT_SECRET_KEY,
         { expiresIn: "5h" }
@@ -167,61 +117,63 @@ module.exports.SignIn = async (req, res) => {
 module.exports.userDetails = async (req, res) => {
   try {
     const { email } = req.user || {};
-    const userExisting = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email });
 
     const getParamsAvatar = {
       Bucket: bucketName,
-      Key: userExisting.avatar,
+      Key: user.avatar,
     };
 
     const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
-   
+
     const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
       expiresIn: 360000,
     });
 
-    userExisting.avatar = avatarUrl;
+    user.avatar = avatarUrl;
 
-      const allBlogs = await Blog.find({}).populate("user", "name avatar");
+    const blogs = await Blog.find({}).populate("user", "name avatar");
 
-      await commonMethod(allBlogs);
-    
-      const allSavedBlogs = await SavedBlog.findOne({
-        user: userExisting._id,
-      }).populate({
-        path: "blogs",
-        populate: {
-          path: "user",
-          select: "name avatar",
-        },
-      });
-      if(allSavedBlogs) {
-        await commonMethod(allSavedBlogs.blogs);
-      }
+    await getUrls(blogs);
 
-      // todo get the following info
-      const allPostedBlogs = await PostedBlog.findOne({
-        user: userExisting._id,
-      }).populate({
-        path: "blogs",
-        populate: {
-          path: "user",
-          select: "name avatar",
-        },
-      });
+    const savedBlogs = await SavedBlog.findOne({
+      user: user._id,
+    }).populate({
+      path: "blogs",
+      populate: {
+        path: "user",
+        select: "name avatar",
+      },
+    });
+    if (savedBlogs) {
+      await getUrls(savedBlogs.blogs);
+    }
 
-      if(allPostedBlogs) {
-        await commonMethod(allPostedBlogs.blogs);
-      }
+    // todo get the following info
+    const postedBlogs = await PostedBlog.findOne({
+      user: user._id,
+    }).populate({
+      path: "blogs",
+      populate: {
+        path: "user",
+        select: "name avatar",
+      },
+    });
 
-      return res.status(200).json({
-        message: "User data is fetched successfully from db",
-        status: "success",
-        user: userExisting,
-        allBlogs,
-        allSavedBlogs: allSavedBlogs || {},
-        allPostedBlogs: allPostedBlogs || {},
-      });
+    if (postedBlogs) {
+      await getUrls(postedBlogs.blogs);
+    }
+
+    return res.status(200).json({
+      message: "User data is fetched successfully from db",
+      status: "success",
+      data: {
+        user,
+        blogs,
+        savedBlogs: savedBlogs || {},
+        postedBlogs: postedBlogs || {},
+      },
+    });
   } catch (error) {
     return res.status(500).json({
       message: "something went wrong",
@@ -229,23 +181,23 @@ module.exports.userDetails = async (req, res) => {
       error,
     });
   }
-}
+};
 
 module.exports.updateUser = async (req, res) => {
- try{
-  const { user, name } = req.body || {};
-  const { originalname, buffer, mimetype } = req.file || {};
-  const existingUser = await User.findById(user);
-  if(name){
-    existingUser.name = name;
-  }
-  if(originalname) {
-    existingUser.avatar = originalname;
-  }
+  try {
+    const { userId, name } = req.body || {};
+    const { originalname, buffer, mimetype } = req.file || {};
+    const user = await User.findById(userId);
+    if (name) {
+      user.name = name;
+    }
+    if (originalname) {
+      user.avatar = originalname;
+    }
 
-  await existingUser.save();
+    await user.save();
 
-   const putParams = {
+    const putParams = {
       Bucket: bucketName,
       Key: originalname,
       Body: buffer,
@@ -261,24 +213,25 @@ module.exports.updateUser = async (req, res) => {
 
     const getCommand = new GetObjectCommand(getParams);
     const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
-    existingUser.avatar = avatarUrl;
+    user.avatar = avatarUrl;
 
-    const allBlogs = await Blog.find({}).populate("user", "name avatar");
+    const blogs = await Blog.find({}).populate("user", "name avatar");
 
-    await commonMethod(allBlogs);
+    await getUrls(blogs);
 
     return res.status(200).json({
       message: "User Details is updated successfully",
-      status: 'success',
-      user: existingUser,
-      blogs: allBlogs
-    })
-
- }catch(error){
-  return res.status(500).json({
-    message: "Error while uploading the user details!",
-    status: 'failure',
-    error,
-  })
- }
-}
+      status: "success",
+      data: {
+        user,
+        blogs,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error while uploading the user details!",
+      status: "failure",
+      error,
+    });
+  }
+};

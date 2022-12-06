@@ -4,6 +4,7 @@ const PORT = process.env.PORT;
 const app = express();
 const db = require('./config/mongoose');
 const cors = require('cors');
+const jst = require('./config/passport_jwt');
 
 app.use(express.urlencoded({extended: true}));
 app.use(express.json({limit: '50mb'}));
@@ -17,3 +18,5 @@ app.listen(PORT, (error) => {
     }
     console.log(`Server is Up and Running on Port: ${PORT}`);
 })
+
+module.exports = app;

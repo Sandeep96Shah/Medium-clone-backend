@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
+        required: true,
     },
     email: {
         type: String,
@@ -14,6 +15,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
+        required: true,
     },
     interests: [
         {
@@ -23,11 +25,23 @@ const userSchema = new mongoose.Schema({
     following: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'user',
+            ref: 'User',
+        }
+    ],
+    postedBlogs: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Blog',
+        }
+    ],
+    savedBlogs: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Blog',
         }
     ]
 });
 
-const Users = mongoose.model('user', userSchema);
+const Users = mongoose.model('User', userSchema);
 
 module.exports = Users;

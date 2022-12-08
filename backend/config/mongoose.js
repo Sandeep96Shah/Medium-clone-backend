@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 mongoose.connect(process.env.MONGODB_URL, {
-    dbName: "medium-clone",
+    dbName: "medium-clone-new",
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })

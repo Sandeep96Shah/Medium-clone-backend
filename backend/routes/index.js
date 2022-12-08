@@ -4,10 +4,10 @@ const passport = require("passport");
 
 const multer = require("multer");
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 const userController = require("../controllers/user");
 const blogController = require("../controllers/blog");
+const urlController = require('../controllers/common');
 
 const { check } = require("express-validator");
 const SignUpValidator = [
@@ -33,7 +33,6 @@ router.post("/sign-in", userController.SignIn);
 router.post(
   "/create-blog",
   passport.authenticate("jwt", { session: false }),
-  upload.single("image"),
   blogController.createBlog
 );
 
@@ -58,8 +57,9 @@ router.get(
 router.post(
   "/update-user",
   passport.authenticate("jwt", { session: false }),
-  upload.single("avatar"),
   userController.updateUser
 );
+
+router.get('/api/upload',passport.authenticate("jwt", { session: false }), urlController.getSignedUrl);
 
 module.exports = router;

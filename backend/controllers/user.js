@@ -1,19 +1,11 @@
 const User = require("../model/user");
 const Blog = require("../model/blogs");
-const SavedBlog = require("../model/userSavedLists");
-const PostedBlog = require("../model/UserPostedBlogs");
 const bcrypt = require("bcrypt");
-const saltRounds = 10;
-require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
-const { getUrls, s3 } = require("../utils/getImageUrl");
-const {
-  PutObjectCommand,
-  GetObjectCommand,
-} = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const bucketName = process.env.BUCKET_NAME;
+const { avatar } = require('../utils/constant');
+require("dotenv").config();
+const saltRounds = 10;
 
 /**
  *
@@ -54,7 +46,7 @@ module.exports.CreateUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      avatar: "commonAvatar.webp",
+      avatar: avatar,
     });
     // pass only user-id
     return res.status(200).json({
@@ -100,7 +92,7 @@ module.exports.SignIn = async (req, res) => {
           email: user.email,
         },
         process.env.PASSPORT_SECRET_KEY,
-        { expiresIn: "5h" }
+        { expiresIn: "50h" }
       );
       return res.status(200).json({
         message: "User data is fetched successfully from db",
@@ -136,51 +128,27 @@ module.exports.SignIn = async (req, res) => {
 module.exports.userDetails = async (req, res) => {
   try {
     const { email } = req.user || {};
-    const user = await User.findOne({ email: email }, 'name email avatar following interests');
-    const getParamsAvatar = {
-      Bucket: bucketName,
-      Key: user.avatar,
-    };
-
-    const getCommandAvatar = new GetObjectCommand(getParamsAvatar);
-
-    const avatarUrl = await getSignedUrl(s3, getCommandAvatar, {
-      expiresIn: 360000,
-    });
-
-    user.avatar = avatarUrl;
+    const user = await User.findOne(
+      { email: email },
+      "name email avatar following interests postedBlogs savedBlogs"
+    ).populate([
+      {
+        path: "postedBlogs",
+        populate: {
+          path: "user",
+          select: "name avatar",
+        },
+      },
+      {
+        path: "savedBlogs",
+        populate: {
+          path: "user",
+          select: "name avatar",
+        },
+      },
+    ]);
 
     const blogs = await Blog.find({}).populate("user", "name avatar");
-
-    await getUrls(blogs);
-
-    const savedBlogs = await SavedBlog.findOne({
-      user: user._id,
-    }).populate({
-      path: "blogs",
-      populate: {
-        path: "user",
-        select: "name avatar",
-      },
-    });
-    if (savedBlogs) {
-      await getUrls(savedBlogs.blogs);
-    }
-
-    // todo get the following info
-    const postedBlogs = await PostedBlog.findOne({
-      user: user._id,
-    }).populate({
-      path: "blogs",
-      populate: {
-        path: "user",
-        select: "name avatar",
-      },
-    });
-
-    if (postedBlogs) {
-      await getUrls(postedBlogs.blogs);
-    }
 
     return res.status(200).json({
       message: "User data is fetched successfully from db",
@@ -188,8 +156,6 @@ module.exports.userDetails = async (req, res) => {
       data: {
         user,
         blogs,
-        savedBlogs: savedBlogs || {},
-        postedBlogs: postedBlogs || {},
       },
     });
   } catch (error) {
@@ -202,7 +168,7 @@ module.exports.userDetails = async (req, res) => {
 };
 
 /**
- * 
+ *
  * @property {object} user - user data, fethced from DB
  * @property {object} putParams - contains data based on which the data is saved on aws s3 bucket
  * @property {string} avatarUrl - contains user avatart url
@@ -213,39 +179,21 @@ module.exports.userDetails = async (req, res) => {
 
 module.exports.updateUser = async (req, res) => {
   try {
-    const { userId, name } = req.body || {};
-    const { originalname, buffer, mimetype } = req.file || {};
-    const user = await User.findById(userId, 'name email avatar interests following');
+    const { userId, name, avatar } = req.body || {};
+    const user = await User.findById(
+      userId,
+      "name email avatar interests following"
+    );
     if (name) {
       user.name = name;
       await user.save();
     }
-    if (originalname) {
-      user.avatar = originalname;
+    if (avatar) {
+      user.avatar = avatar;
       await user.save();
-      const putParams = {
-        Bucket: bucketName,
-        Key: originalname,
-        Body: buffer,
-        ContentType: mimetype,
-      };
-  
-      const putCommand = new PutObjectCommand(putParams);
-      await s3.send(putCommand); 
     }
 
-    const getParams = {
-      Bucket: bucketName,
-      Key: user.avatar,
-    };
-
-    const getCommand = new GetObjectCommand(getParams);
-    const avatarUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
-    user.avatar = avatarUrl;
-
     const blogs = await Blog.find({}).populate("user", "name avatar");
-
-    await getUrls(blogs);
 
     return res.status(200).json({
       message: "User Details is updated successfully",

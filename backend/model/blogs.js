@@ -1,34 +1,34 @@
+const {blogCategories} = require('../utils/constant');
 const mongoose = require('mongoose');
 
 const blogSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
+        ref: 'User',
     },
     title: {
         type: String,
+        required: true,
     },
-    brief: {
-        type: String,
-    },
-    image: {
+    blogImage: {
         type: String,
     },
     category: {
         type: String,
+        default: 'Not Declared',
+        // enum: blogCategories
     },
-    estimated: {
+    readingTime: {
         type: Number,
     },
     description: {
         type: String,
+        required: true,
     },
-    createdAt: {
-        type: Date,
-        default: new Date(),
-    }
+},{
+    timestamps: true
 });
 
-const Blogs = mongoose.model('blog', blogSchema);
+const Blogs = mongoose.model('Blog', blogSchema);
 
 module.exports = Blogs;

@@ -4,17 +4,17 @@ require("dotenv").config();
 
 /**
  *
- * @property {object} putParams - contains data related to the bucket and the item to be saved in s3 bucket
  * @property {object} newBlog - contains data related to the newly created blog
- * @property {object} userPostedList - contains data related to user and array of blogs id which he/she has posted
- * @property {object} postedBlogs - contains blogs whcih the user has posted
+ * @property {object} user - user data fetched from db to add the newBlog id into postedBlogs array
+ * @property {object} updatedUser - user data fetched again from db so that it will have the newBlog data in its postedBlogs array
  * @returns {object} {message: string, status: string} - if every operation executes successfully
  * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
  */
 
 module.exports.createBlog = async (req, res) => {
   try {
-    const { title, category, description, userId, blogImage } = req.body || {};
+    const { title, category, description, blogImage } = req.body || {};
+    const { _id: userId } = req.user || {};
 
     const newBlog = await Blog.create({
       user: userId,
@@ -35,7 +35,6 @@ module.exports.createBlog = async (req, res) => {
         select: "name avatar",
       },
     });
-    console.log("updatedUser", updatedUser);
 
     return res.status(200).json({
       message: "Blog created successfully",
@@ -55,17 +54,17 @@ module.exports.createBlog = async (req, res) => {
 
 /**
  *
- * @property {object} userSavedList = contains data related to current userId and array of blogsId
- * @property {object} savedList - contains data related to blogs which the current user has saved
+ * @property {object} user - user data fetched from db to add the blog id in savedBlogs array
+ * @property {object} updatedUser - user data fetched again from db so that the savedBlogs will have newly added blog details
  * @returns {object} {message: string, status: string, data: object} - if every operation gets eecuted successfully
  * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
  */
 
 module.exports.saveBlog = async (req, res) => {
   try {
-    const { userId, blogId } = req.body || {};
+    const { blogId } = req.body || {};
+    const { _id: userId } = req.user || {};
     const user = await User.findById(userId, "savedBlogs");
-    console.log("user", user);
     user.savedBlogs.push(blogId);
     await user.save();
 
@@ -76,7 +75,6 @@ module.exports.saveBlog = async (req, res) => {
         select: "name avatar",
       },
     });
-    console.log("updatedUser", updatedUser);
 
     return res.status(200).json({
       message: "Blog Saved in list successfully",
@@ -104,7 +102,6 @@ module.exports.saveBlog = async (req, res) => {
 module.exports.getAllBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({}).populate("user", "name avatar");
-    console.log('blogs', blogs)
 
     return res.status(200).json({
       message: "Successfully fetched the blogs from database",
@@ -125,10 +122,6 @@ module.exports.getAllBlogs = async (req, res) => {
 /**
  *
  * @property {object} blogDetails - contains the details data related to the blog
- * @property {object} getParamsAvatar - contains the data by which user avatar url is fetched from aws s3 bucket
- * @property {string} avatarUrl - contains the avatar url received from aws s3 bucket
- * @property {object} getParamsImage - contains the data by which the blog image url is fetched from aws s3 bucket
- * @property {string} imageUrl - contains the blog image url received from aws s3 bucket
  * @returns {object} {message: string, status: string, data: object} - if every operations executes successfully
  * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
  * @returns

@@ -2,12 +2,9 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 
-const multer = require("multer");
-const storage = multer.memoryStorage();
-
 const userController = require("../controllers/user");
 const blogController = require("../controllers/blog");
-const urlController = require('../controllers/common');
+const urlController = require("../controllers/common");
 
 const { check } = require("express-validator");
 const SignUpValidator = [
@@ -60,6 +57,10 @@ router.post(
   userController.updateUser
 );
 
-router.get('/api/upload',passport.authenticate("jwt", { session: false }), urlController.getSignedUrl);
+router.get(
+  "/api/upload",
+  passport.authenticate("jwt", { session: false }),
+  urlController.getSignedUrl
+);
 
 module.exports = router;

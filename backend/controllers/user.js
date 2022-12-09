@@ -48,7 +48,7 @@ module.exports.CreateUser = async (req, res) => {
       password: hashedPassword,
       avatar: avatar,
     });
-    // pass only user-id
+
     return res.status(200).json({
       message: "User Created Successfully",
       status: "success",
@@ -64,13 +64,11 @@ module.exports.CreateUser = async (req, res) => {
 
 /**
  *
- * @param {*} req
- * @param {*} res
- * @property {object} user - contains used data, fetched from DB
- * @property {boolean} isPasswordMatched - will have true when password matched else false
+ * @property {object} user - contains user data, fetched from DB
+ * @property {boolean} isPasswordMatched - will be true when password matched else false
  * @property {string} token - token string
  * @returns {object} {message: string, status: string, token: string} - if password matched
- * @returns {object} {message: string, status: string} - if password does not match or user doesn;t exists
+ * @returns {object} {message: string, status: string} - if password does not match or user doesn't exists
  * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute.
  */
 
@@ -116,11 +114,7 @@ module.exports.SignIn = async (req, res) => {
 /**
  *
  * @property {object} user - contains user data fethced from DB
- * @property {object} getParamsAvatar - contains bucket name of aws and the key
- * @property {string} avatarUrl - contains url of the user avatart fetched from aws
  * @property {object} blogs - contains blogs data, fethced from DB
- * @property {object} savedBlogs - contains user saved blogs data, fetched from DB
- * @property {object} postedBlogs - contains user posted blogs data, fethced from DB
  * @returns {object} {message: string, status: string, data: object} - if every operation executes successfully
  * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
  */
@@ -170,8 +164,6 @@ module.exports.userDetails = async (req, res) => {
 /**
  *
  * @property {object} user - user data, fethced from DB
- * @property {object} putParams - contains data based on which the data is saved on aws s3 bucket
- * @property {string} avatarUrl - contains user avatart url
  * @property {object} blogs - contains all the blogs data, fetched from DB
  * @returns {object} {message: string, status: string, data: object} - if every operation get executed successfully
  * @returns {object} {message:string, status: string, error: object} - if any operation fails to execute
@@ -179,7 +171,8 @@ module.exports.userDetails = async (req, res) => {
 
 module.exports.updateUser = async (req, res) => {
   try {
-    const { userId, name, avatar } = req.body || {};
+    const { name, avatar } = req.body || {};
+    const { _id: userId } = req.user || {};
     const user = await User.findById(
       userId,
       "name email avatar interests following"

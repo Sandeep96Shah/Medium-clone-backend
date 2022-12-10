@@ -5,6 +5,7 @@ const app = express();
 const db = require('./config/mongoose');
 const cors = require('cors');
 const jst = require('./config/passport_jwt');
+const redisCached = require('./config/cache');
 
 app.use(express.urlencoded({extended: true}));
 app.use(express.json({limit: '50mb'}));

@@ -3,7 +3,8 @@ const Blog = require("../model/blogs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
-const { avatar } = require('../utils/constant');
+const { avatar } = require("../utils/constant");
+const { clearHash } = require('../config/cache');
 require("dotenv").config();
 const saltRounds = 10;
 
@@ -121,26 +122,28 @@ module.exports.SignIn = async (req, res) => {
 
 module.exports.userDetails = async (req, res) => {
   try {
-    const { email } = req.user || {};
+    const { email, _id: userId } = req.user || {};
     const user = await User.findOne(
       { email: email },
       "name email avatar following interests postedBlogs savedBlogs"
-    ).populate([
-      {
-        path: "postedBlogs",
-        populate: {
-          path: "user",
-          select: "name avatar",
+    )
+      .populate([
+        {
+          path: "postedBlogs",
+          populate: {
+            path: "user",
+            select: "name avatar",
+          },
         },
-      },
-      {
-        path: "savedBlogs",
-        populate: {
-          path: "user",
-          select: "name avatar",
+        {
+          path: "savedBlogs",
+          populate: {
+            path: "user",
+            select: "name avatar",
+          },
         },
-      },
-    ]);
+      ])
+      .cache({ key: userId });
 
     const blogs = await Blog.find({}).populate("user", "name avatar");
 
@@ -187,6 +190,8 @@ module.exports.updateUser = async (req, res) => {
     }
 
     const blogs = await Blog.find({}).populate("user", "name avatar");
+
+    clearHash(userId);
 
     return res.status(200).json({
       message: "User Details is updated successfully",

@@ -1,6 +1,7 @@
 const Blog = require("../model/blogs");
 const User = require("../model/user");
 require("dotenv").config();
+const { clearHash } = require("../config/cache");
 
 /**
  *
@@ -35,6 +36,8 @@ module.exports.createBlog = async (req, res) => {
         select: "name avatar",
       },
     });
+
+    clearHash("all");
 
     return res.status(200).json({
       message: "Blog created successfully",
@@ -76,6 +79,8 @@ module.exports.saveBlog = async (req, res) => {
       },
     });
 
+    clearHash(userId);
+
     return res.status(200).json({
       message: "Blog Saved in list successfully",
       status: "success",
@@ -101,8 +106,9 @@ module.exports.saveBlog = async (req, res) => {
 
 module.exports.getAllBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find({}).populate("user", "name avatar");
-
+    const blogs = await Blog.find({})
+      .populate("user", "name avatar")
+      .cache({ key: "all" });
     return res.status(200).json({
       message: "Successfully fetched the blogs from database",
       status: "success",
@@ -130,7 +136,9 @@ module.exports.getAllBlogs = async (req, res) => {
 module.exports.blogDetails = async (req, res) => {
   try {
     const { id } = req.params || {};
-    const blogDetails = await Blog.findById(id).populate("user", "name avatar");
+    const blogDetails = await Blog.findById(id)
+      .populate("user", "name avatar")
+      .cache({ key: id });
 
     return res.status(200).json({
       message: "Fetched blog details from db",

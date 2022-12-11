@@ -4,41 +4,37 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const { avatar } = require("../utils/constant");
-const { clearHash } = require('../config/cache');
+const { clearHash } = require("../config/cache");
 require("dotenv").config();
 const saltRounds = 10;
 
 /**
  *
- * @property {object} error - contains data related to failed validation
- * @property {object} user - contains user which is fetched from DB
- * @property {string} hashedPassword - contains hash format of password
- * @returns {object} {message: string, error: array, status: string} - when validation fails
- * @returns {object} {message: string, status: string} - in case of success or any mis-matched operation
- * @returns {object} {message: string, error: object, status: string} - when any operation fails to execute
+ * @param {*} req
+ * @param {*} res
+ * @returns {response} {message: string, data: object}
  */
 module.exports.CreateUser = async (req, res) => {
   try {
     const error = validationResult(req);
     if (!error.isEmpty()) {
-      return res.status(400).json({
-        message: "Validation error",
-        error: error.array(),
-        status: "validate-failure",
+      return res.status(404).json({
+        message: "Please enter valid data",
+        data: error.array(),
       });
     }
     const { name, email, password, confirmPassword } = req.body || {};
     if (password !== confirmPassword) {
       return res.status(400).json({
         message: "Password and Confirm password does not matched!",
-        status: "failure",
+        data: {},
       });
     }
     const user = await User.findOne({ email: email });
     if (user) {
       return res.status(400).json({
-        message: "User already exists",
-        status: "failure",
+        message: "Please signIn",
+        data: {},
       });
     }
 
@@ -51,26 +47,22 @@ module.exports.CreateUser = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "User Created Successfully",
-      status: "success",
+      message: "Registration successful",
+      data: {},
     });
   } catch (error) {
     return res.status(500).json({
       message: "Something went wrong!",
-      status: "failure",
-      error,
+      data: error,
     });
   }
 };
 
 /**
  *
- * @property {object} user - contains user data, fetched from DB
- * @property {boolean} isPasswordMatched - will be true when password matched else false
- * @property {string} token - token string
- * @returns {object} {message: string, status: string, token: string} - if password matched
- * @returns {object} {message: string, status: string} - if password does not match or user doesn't exists
- * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute.
+ * @param {*} req
+ * @param {*} res
+ * @returns {response} {message: string, data: object}
  */
 
 module.exports.SignIn = async (req, res) => {
@@ -80,7 +72,7 @@ module.exports.SignIn = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         message: "You need to create an account first",
-        status: "failure",
+        data: {},
       });
     }
     const isPasswordMatched = await bcrypt.compare(password, user.password);
@@ -95,29 +87,26 @@ module.exports.SignIn = async (req, res) => {
       );
       return res.status(200).json({
         message: "User data is fetched successfully from db",
-        status: "success",
-        token,
+        data: {token},
       });
     }
     return res.status(400).json({
       message: "Email/Password is incorrect",
-      status: "failure",
+      data: {},
     });
   } catch (error) {
     return res.status(500).json({
       message: "something went wrong",
-      status: "failure",
-      error,
+      data: error,
     });
   }
 };
 
 /**
  *
- * @property {object} user - contains user data fethced from DB
- * @property {object} blogs - contains blogs data, fethced from DB
- * @returns {object} {message: string, status: string, data: object} - if every operation executes successfully
- * @returns {object} {message: string, status: string, error: object} - if any operation fails to execute
+ * @param {*} req
+ * @param {*} res
+ * @returns {response} {message: string, data: object}
  */
 
 module.exports.userDetails = async (req, res) => {
@@ -149,7 +138,6 @@ module.exports.userDetails = async (req, res) => {
 
     return res.status(200).json({
       message: "User data is fetched successfully from db",
-      status: "success",
       data: {
         user,
         blogs,
@@ -158,18 +146,16 @@ module.exports.userDetails = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "something went wrong",
-      status: "failure",
-      error,
+      data: error,
     });
   }
 };
 
 /**
  *
- * @property {object} user - user data, fethced from DB
- * @property {object} blogs - contains all the blogs data, fetched from DB
- * @returns {object} {message: string, status: string, data: object} - if every operation get executed successfully
- * @returns {object} {message:string, status: string, error: object} - if any operation fails to execute
+ * @param {*} req
+ * @param {*} res
+ * @returns {response} {message: string, data: object}
  */
 
 module.exports.updateUser = async (req, res) => {
@@ -195,7 +181,6 @@ module.exports.updateUser = async (req, res) => {
 
     return res.status(200).json({
       message: "User Details is updated successfully",
-      status: "success",
       data: {
         user,
         blogs,
@@ -204,8 +189,7 @@ module.exports.updateUser = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Error while updating the user details!",
-      status: "failure",
-      error,
+      data: error,
     });
   }
 };

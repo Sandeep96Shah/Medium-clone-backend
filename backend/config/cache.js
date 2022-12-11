@@ -1,10 +1,8 @@
 const mongoose = require("mongoose");
 const redis = require("redis");
-// const util = require("util");
 const redisUrl = "redis://127.0.0.1:6379";
 const client = redis.createClient(redisUrl);
 client.connect();
-// client.get = util.promisify(client.get);
 
 const exec = mongoose.Query.prototype.exec;
 
@@ -31,9 +29,9 @@ mongoose.Query.prototype.exec = async function () {
       : new this.model(doc);
   }
   const result = await exec.apply(this, arguments);
-  
+
   if (result) {
-    await client.hSet(this.hashKey, key, JSON.stringify(result), "EX", 10);
+    await client.hSet(this.hashKey, key, JSON.stringify(result));
   }
 
   return result;

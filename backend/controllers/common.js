@@ -21,11 +21,9 @@ module.exports.getSignedUrl = async (req, res) => {
     if(err) {
         return res.status(400).json({
             message: "failure",
-            status: 'failure',
         })
     }
     return res.status(200).json({
-        status: 'success',
         key,
         url,
       })

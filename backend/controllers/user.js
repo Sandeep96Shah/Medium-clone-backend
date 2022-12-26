@@ -134,7 +134,7 @@ module.exports.userDetails = async (req, res) => {
       ])
       .cache({ key: userId });
 
-    const blogs = await Blog.find({}).populate("user", "name avatar");
+    const blogs = await Blog.find({}).populate("user", "name avatar").cache({ key: "all" });
 
     return res.status(200).json({
       message: "User data is fetched successfully from db",

@@ -10,6 +10,15 @@ const redisCached = require('./config/cache');
 app.use(express.urlencoded({extended: true}));
 app.use(express.json({limit: '50mb'}));
 app.use(cors());
+app.use(function(req,res,next){
+    res.header("Access-Control-Allow-Origin","*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested:With, Content-Type, Accept"
+    );
+    next();
+})
 app.use('/', require('./routes/index'));
 
 app.listen(PORT, (error) => {

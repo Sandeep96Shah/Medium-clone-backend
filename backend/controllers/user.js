@@ -178,6 +178,7 @@ module.exports.updateUser = async (req, res) => {
     const blogs = await Blog.find({}).populate("user", "name avatar");
 
     clearHash(userId);
+    clearHash("all");
 
     return res.status(200).json({
       message: "User Details is updated successfully",
